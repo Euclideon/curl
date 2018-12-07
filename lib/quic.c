@@ -924,28 +924,26 @@ CURLcode Curl_quic_connect(struct connectdata *conn,
                            socklen_t addrlen)
 {
   int rc;
+  struct quicsocket *qs = &conn->quic;
   (void)sockfd;
   (void)addr;
   (void)addrlen;
   infof(conn->data, "Connecting socket %d over QUIC\n", sockfd);
 
-  conn->quic.sslctx = quic_ssl_ctx(conn->data);
-  if(!conn->quic.sslctx)
+  qs->sslctx = quic_ssl_ctx(conn->data);
+  if(!qs->sslctx)
     return CURLE_FAILED_INIT; /* TODO: better return code */
 
   if(quic_init_ssl(conn))
     return CURLE_FAILED_INIT; /* TODO: better return code */
 
-  quic_settings(&conn->quic.settings);
-  quic_callbacks(&conn->quic.callbacks);
+  quic_settings(&qs->settings);
+  quic_callbacks(&qs->callbacks);
 
   /* ngtcp2 master branch uses version NGTCP2_PROTO_VER_D14 */
-  rc = ngtcp2_conn_client_new(&conn->quic.conn,
-                              &conn->quic.dcid,
-                              &conn->quic.scid,
+  rc = ngtcp2_conn_client_new(&qs->conn, &qs->dcid, &qs->scid,
                               NGTCP2_PROTO_VER_D14,
-                              &conn->quic.callbacks,
-                              &conn->quic.settings, conn);
+                              &qs->callbacks, &qs->settings, conn);
   if(rc)
     return CURLE_FAILED_INIT; /* TODO: create a QUIC error code */
 
