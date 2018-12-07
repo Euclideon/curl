@@ -548,10 +548,18 @@ static int quic_init_ssl(struct connectdata *conn)
   SSL_set_key_callback(qs->ssl, ssl_key_cb, conn);
 
   switch(qs->version) {
+#ifdef NGTCP2_PROTO_VER_D14
   case NGTCP2_PROTO_VER_D14:
     alpn = (const uint8_t *)NGTCP2_ALPN_D14;
     alpnlen = strlen(NGTCP2_ALPN_D14);
     break;
+#endif
+#ifdef NGTCP2_PROTO_VER_D15
+  case NGTCP2_PROTO_VER_D15:
+    alpn = (const uint8_t *)NGTCP2_ALPN_D15;
+    alpnlen = strlen(NGTCP2_ALPN_D15);
+    break;
+#endif
   }
   if(alpn)
     SSL_set_alpn_protos(qs->ssl, alpn, (int)alpnlen);
@@ -804,8 +812,13 @@ static ssize_t cb_encrypt_pn(ngtcp2_conn *tconn,
   return rc;
 }
 
+#ifdef NGTCP2_PROTO_VER_D15
+#define FINTYPE int
+#else
+#define FINTYPE uint8_t
+#endif
 static int cb_recv_stream_data(ngtcp2_conn *tconn, uint64_t stream_id,
-                               uint8_t fin, uint64_t offset,
+                               FINTYPE fin, uint64_t offset,
                                const uint8_t *buf, size_t buflen,
                                void *user_data, void *stream_user_data)
 {
@@ -940,10 +953,14 @@ CURLcode Curl_quic_connect(struct connectdata *conn,
   quic_settings(&qs->settings);
   quic_callbacks(&qs->callbacks);
 
+#ifdef NGTCP2_PROTO_VER_D15
+#define QUICVER NGTCP2_PROTO_VER_D15
+#else
+#define QUICVER NGTCP2_PROTO_VER_D14
+#endif
   /* ngtcp2 master branch uses version NGTCP2_PROTO_VER_D14 */
   rc = ngtcp2_conn_client_new(&qs->conn, &qs->dcid, &qs->scid,
-                              NGTCP2_PROTO_VER_D14,
-                              &qs->callbacks, &qs->settings, conn);
+                              QUICVER, &qs->callbacks, &qs->settings, conn);
   if(rc)
     return CURLE_FAILED_INIT; /* TODO: create a QUIC error code */
 
